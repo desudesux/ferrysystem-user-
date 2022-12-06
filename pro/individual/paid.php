@@ -3,148 +3,223 @@ if (!isset($file_access)) die("Direct File Access Denied");
 ?>
 <?php
 
-$me = $_SESSION['user_id'];
+if (isset($_GET['now'])) {
+    echo "<script>alert('Your payment was successful');window.location='individual.php?page=paid';</script>";
+    exit;
+}
 
 ?>
-
-<div class="content">
-
+<!-- Content Header (Page header) -->
 
 
-    <!-- Main content -->
-    <section class="content">
-        <div class="container-fluid">
-
-            <div class="card card-success">
-                <div class="card-header">
-                    <h3 class="card-title"><b>Book Ferry Tickets</b></h3>
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="callout callout-info">
+                    <h5><i class="fas fa-info"></i> Info:</h5>
+                    Payment History and Print Tickets
                 </div>
-                <div class="card-body">
-
-                    <table id="example1" style="align-items: stretch;"
-                        class="table table-hover w-100 table-bordered table-striped<?php //
-                                                                                                                                    ?>">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Route</th>
-                                <th>Status</th>
-                                <th>Date/Time</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            $row = querySchedule('future');
-                            if ($row->num_rows < 1) echo "<div class='alert alert-danger' role='alert'>
-                            Sorry, There are no schedules at the moment! Please visit after some time.
-                          </div>";
-                            $sn = 0;
-                            while ($fetch = $row->fetch_assoc()) {
-                                //Check if the current date is same with Database scheduled date
-                                $db_date = $fetch['date'];
-                                if ($db_date == date('d-m-Y')) {
-                                    //Oh yes, so what should happen?
-                                    //Check for the time. If there is still about an hour left, proceed else, skip this data
-                                    $db_time = $fetch['time'];
-                                    $current_time = date('H:i');
-                                    if ($current_time >= $db_time) {
-                                        continue;
-                                    }
-                                }
-                                
-                                $id = $fetch['id']; ?><tr>
-                                <td><?php echo ++$sn; ?></td>
-                                <td><?php echo $fullname =  getRoutePath($fetch['route_id']);
-                                        ?></td>
-                                <td><?php $array = getTotalBookByType($id);
-                                        echo ($max_first = ($array['first'] - $array['first_booked'])), " Seat(s) Available";
-                                        ?></td>
-                                <td><?php echo $fetch['date'], " / ", formatTime($fetch['time']); ?></td>
-                                <td>
-                                <?php                                 
-                                    $mcap_check = connect()->query("SELECT train.first_seat as first FROM schedule INNER JOIN train ON train.id = schedule.train_id WHERE schedule.id = '$id'")->fetch_assoc();
-                                    $ncap_check =  connect()->query("SELECT SUM(no) as no FROM `booked` WHERE schedule_id = '$id' AND class = 'first'")->fetch_assoc();
-                                    $maxcap = $mcap_check['first'];
-                                    $occupied_seat = $ncap_check['no'];
-                                    if($maxcap > $occupied_seat){                                             
-                                ?>
-
-                                    <button type="button" class="btn btn-info" data-toggle="modal"
-                                        data-target="#book<?php echo $id ?>">
-                                        Book
-                                    </button>
-                                
-                                <?php }else{ ?>
-                                    <button type="button" class="btn btn-danger" data-toggle="modal"
-                                        data-target="#book<?php echo $id ?> disable">
-                                        Full
-                                    </button>
-                                <?php } ?>
-                                </td>
-                            </tr>
-
-                            <div class="modal fade" id="book<?php echo $id ?>">
-                                <div class="modal-dialog modal-lg">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h4 class="modal-title">Book For <?php echo $fullname;
 
 
-                                                                                    ?> &#9972;</h4>
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <div class="modal-body">
 
-
-                                            <form action="<?php echo $_SERVER['PHP_SELF'] . "?loc=$id" ?>"
-                                                method="post">
-                                                <input type="hidden" class="form-control" name="id"
-                                                    value="<?php echo $id ?>" required id="">
-
-                                                <p>Number of Tickets (If you are the only one, leave as it is) :
-                                                    <input type="number" min='1' value="1"
-                                                        max='<?php echo $max_first >=  $array['first_booked'] ? $max_first :  $array['first_booked'] ?>'
-                                                        name="number" class="form-control" id="">
-                                                </p>
-                                                <p>
-                                                    Type of Discount : <select name="classification" required class="form-control" id="">
-                                                        <option value="0">Regular</option>
-                                                        <option value=".20">Person With Disability (20%)</option>
-                                                        <option value=".05">Senior Citizen (5%)</option>
-                                                    </select>
-                                                </p>
-                                                <p>
-                                                    Available Seat : <input type="text" value="<?php echo 'Seat(s) Available: '.($max_first); ?>" class="form-control" id="" readonly disabled>
-
-                                                    </select>
-                                                </p>
-                                                <input type="submit" name="submit" class="btn btn-success"
-                                                    value="Proceed">
-
-                                            </form>
-
-                                        </div>
-                                        <!-- /.modal-content -->
-                                    </div>
-                                    <!-- /.modal-dialog -->
-                                </div>
-                                <!-- /.modal -->
+                <div class="card">
+                    <div class="card-header alert-success">
+                        <h5 class="m-0">Bookings - Purchased Tickets</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered" id='example1'>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Ticket Number</th>
+                                    <th>Trip Date</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 <?php
-                            }
+                                $conn = connect()->query("SELECT *, booked.id as id, payment.date as pd FROM `booked` INNER JOIN payment ON booked.payment_id = payment.id INNER JOIN schedule ON schedule.id = booked.schedule_id  WHERE payment.passenger_id = '$user_id' ORDER BY booked.id DESC");
+                                $sn = 0;
+                                while ($row = $conn->fetch_assoc()) {
+                                    $fullname = getRouteFromSchedule($row['schedule_id']);
+                                    $id = $row['id'];
+                                    $sn++;
+                                    echo "<tr>
+                                    <td>$sn</td>
+                                    <td>" . $row['code'] . "</td>
+                                    <td>" . $row['date'] . "</td>                                    
+                                    ";
+                                    if ($row['cancel'] == 1) {
+                                        echo "
+                                        <td>" . '<span class="text-bold text-danger">Canceled' . "</td>                                        
+                                        ";
+                                    }
+                                    if ($row['cancel'] == 0) {
+                                        echo "
+                                        <td>" . ((isScheduleActive($row['schedule_id']) ? '<span class="text-bold text-success">Active' : '<span class="text-bold text-danger">Expired')) . "</span></td>
+                                        ";
+                                    }
+
+                                    echo " 
+                                    <td>
+                                    <button type='button' class='btn btn-primary' data-toggle='modal'
+                                    data-target='#view$id'>
+                                    View
+                                </button>
+                                    </td>
+
+                                    </tr>";
                                 ?>
+                                    <div class="modal fade" id="view<?php echo $id ?>">
+                                        <div class="modal-dialog modal-lg">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h4 class="modal-title">Details For - <?php echo $fullname; ?>
+                                                        <span class="">&#9972;</span>
+                                                    </h4>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                                <div class="modal-body">
 
-                        </tbody>
-                        
-                    </table>
+
+                                                    <p><b>Seat Number :</b>
+                                                        <?php echo $row['seat'];
+                                                        ?>
+                                                    </p>
+                                                    <p><b>Train Name :</b>
+                                                        <?php echo getTrainName($row['train_id']);
+                                                        ?>
+                                                    </p>
+                                                    <p><b>Payment Date :</b>
+                                                        <?php echo ($row['pd']);
+                                                        ?>
+                                                    </p>
+                                                    <p><b>Amount Paid :</b> $
+                                                        <?php echo ($row['amount']);
+                                                        ?>
+                                                    </p>
+                                                    <p><b>Payment Ref :</b>
+                                                        <?php echo ($row['ref']);
+                                                        ?>
+                                                    </p>
+
+                                                    <?php
+                                                    if($row['cancel'] == 0) { 
+                                                        if (isScheduleActive($row['schedule_id'])) echo '<a href="individual.php?page=print&print=' . $id . '"><button  class="btn btn-success">Print Ticket</button></a>';
+                                                        else echo '<button disabled="disabled" class="btn btn-danger">Ticket Has Been Expired</button>';       
+                                                    }                                                    
+                                                    else {
+                                                        echo '<button disabled="disabled" class="btn btn-danger">Booked Has Been Canceled</button>';       
+                                                    }
+                                                    ?>
+                                                    
+                                                    <?php
+                                                    $fet = querySchedule('future');
+                                                    $msg = "";
+                                                    $output = "<option value=''>Choose One Or Skip To Leave As It Is</option>";
+                                                    if ($fet->num_rows < 1) $msg = "<span class='text-danger'>No Upcoming Schedules Yet</span>";
+                                                    while ($fetch = $fet->fetch_assoc()) {
+                                                        //Check if the current date is same with Database scheduled date
+                                                        $db_date = $fetch['date'];
+                                                        if ($db_date == date('d-m-Y')) {
+                                                            //Oh yes, so what should happen?
+                                                            //Check for the time. If there is still about an hour left, proceed else, skip this data
+                                                            $db_time = $fetch['time'];
+                                                            $current_time = date('H:i');
+                                                            if ($current_time >= $db_time) {
+                                                                continue;
+                                                            }
+                                                        }
+                                                        $fullname =  getRoutePath($fetch['route_id']);
+                                                        $datetime = $fetch['date'] . " / " . formatTime($fetch['time']);
+                                                        $output .= "<option value='$fetch[id]'>$fullname - $datetime</option>";
+                                                    }
+                                                    if($row['cancel'] == 0) { 
+                                                    if (isScheduleActive($row['schedule_id'])) echo '<div x-data="{ open: false }">
+                                                    <button @click="open = true" class="btn btn-dark float-right">Modify</button>
+                                                    <p x-show="open" @click.away="open = false">
+                                                    <form method="POST" >
+                                                    ' . $msg . '
+                                                        <select class="form-control" name="s" required >
+                                                            ' . $output . '
+                                                        </select>
+                                                        <input type="hidden" name="pk" value="' . $id . '">
+                                                        <input type="submit" name="modify" class="btn btn-primary" value="Submit Form" />
+                                                    </form>
+                                                    </p>                                                
+                                                    <br>
+                                                    <br>                                                                                                       
+                                                    <form method="POST" >                                  
+                                                        <input type="hidden" name="pk" value="' . $id . '">         
+                                                        <input type="submit" name="cancel" class="btn btn-danger float-right" value="Cancel" />
+                                                    </form>
+                                                   
+                                                    </div>';
+                                                
+                                                    }
+                                                    ?>
+
+                                                    <!-- Start -->
+
+
+                                                    <!-- End -->
+                                                </div>
+                                                <!-- /.modal-content -->
+                                            </div>
+                                            <!-- /.modal-dialog -->
+                                        </div>
+                                    <?php
+                                }
+                                    ?>
+                            </tbody>
+                        </table>
+
+
+                    </div>
+
+                    <br />
                 </div>
-                <!-- /.card-body -->
-            </div>
-        </div>
-    </section>
-
-    </form>
-
+                <!-- /.invoice -->
+            </div><!-- /.col -->
+        </div><!-- /.row -->
+    </div><!-- /.container-fluid -->
+</section>
+<!-- /.content -->
 </div>
+
+<?php
+if (isset($_POST['modify'])) {
+
+    $pk = $_POST['pk'];
+    $s = $_POST['s'];
+    $db = connect();
+    $sql = "UPDATE booked SET schedule_id = '$s' WHERE id = '$pk';";
+    // die($sql);
+    $query = $db->query($sql);
+    if ($query) {
+        alert("Modification Saved");
+        load($_SERVER['PHP_SELF'] . "?page=paid");
+    } else {
+        alert("Error Occurred While Trying To Save.");
+    }
+}
+if (isset($_POST['cancel'])) {
+
+    $pk = $_POST['pk'];
+    $db = connect();
+    $sql = "UPDATE booked SET cancel = 1 WHERE id = '$pk';";
+    // die($sql);
+    $query = $db->query($sql);
+    if ($query) {
+
+        alert("Book Canceled");
+        load($_SERVER['PHP_SELF'] . "?page=paid");
+    } else {
+        alert("Error Occurred While Trying To Save.");
+    }
+}
+?>
